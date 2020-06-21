@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -14,257 +15,271 @@ import mcg.mazes.utils.Constants;
 
 public class Maze {
 
-  int sizeX;
-  int sizeY;
+	int sizeX;
+	int sizeY;
 
-  int threshold = Constants.THRESHOLD;
-  
-  private ArrayList<Cell> grid;
+	int threshold = Constants.THRESHOLD;
 
-  static int printNum = 0;
+	private ArrayList<Cell> grid;
 
-  public Maze() throws IOException {
-    this(4, 4);
-  }
+	static int printNum = 0;
 
-  public Maze(int sizeX, int sizeY) {
-    this(sizeX, sizeY, Constants.THRESHOLD);
-  }
+	public Maze() throws IOException {
+		this(4, 4);
+	}
 
-  public Maze(int sizeX, int sizeY, int threshold) {
-    this.sizeX = sizeX;
-    this.sizeY = sizeY;
-    
-    this.threshold = threshold;
-    
-    this.grid = generateGrid();
-    
-    this.generateMaze();
-  }
+	public Maze(int sizeX, int sizeY) {
+		this(sizeX, sizeY, Constants.THRESHOLD);
+	}
 
-  public int getHeight() {
-    return this.sizeY;
-  }
+	public Maze(int sizeX, int sizeY, int threshold) {
+		this.sizeX = sizeX;
+		this.sizeY = sizeY;
 
-  public int getWidth() {
-    return this.sizeX;
-  }
-  
-  private ArrayList<Cell> generateGrid() {
-    ArrayList<Cell> grid = new ArrayList<Cell>();
+		this.threshold = threshold;
 
-    for (int y = 0; y < sizeY; y++) {
-      for (int x = 0; x < sizeX; x++) {
-        Cell cell = new Cell(x, y, this);
-        grid.add(cell);
-      }
-    }
+		this.grid = generateGrid();
 
-    return grid;
-  }
+		this.generateMaze();
+	}
 
-  private void generateMaze() {
-    split(grid);
-    clearRegionMarks();
-  }
+	public int getHeight() {
+		return this.sizeY;
+	}
 
-  public void print() {
-    System.out.println(this);
-  }
-  
-  private void clearRegionMarks() {
-    for (Cell cell : grid) {
-      cell.setRegion(Constants.NO_REGION);
-    }
-  }
-  
-  private void split(List<Cell> region) {
-    if (region.size() <= this.threshold) return;
-    
-    clearRegionMarks();
-    
-    if(Constants.DEBUGLEVEL >  1) System.out.println("Iniciando Split");
-    if(Constants.DEBUGLEVEL >= 1) { print(); pause(); }
-    
-    
-    Cell seedA = getRandomUnsplitCell(region);
-    seedA.setRegion(Constants.A);
+	public int getWidth() {
+		return this.sizeX;
+	}
 
-    Cell seedB = getRandomUnsplitCell(region);
-    seedB.setRegion(Constants.B);
+	private ArrayList<Cell> generateGrid() {
+		ArrayList<Cell> grid = new ArrayList<Cell>();
 
-    Set<Cell> set = new HashSet<Cell>();
-    set.add(seedA);
-    set.add(seedB);
+		for (int y = 0; y < sizeY; y++) {
+			for (int x = 0; x < sizeX; x++) {
+				Cell cell = new Cell(x, y, this);
+				grid.add(cell);
+			}
+		}
 
-    long unsplitCellsCount = region.size(); 
-    
-    while (unsplitCellsCount > 0) {
-      Cell currentCell = set.toArray(new Cell[0])[ThreadLocalRandom.current().nextInt(0, set.size())];
-      set.remove(currentCell);
-      
-      Collection<Cell> neighbors = currentCell.getNeighborhood().stream()
-                                                                .filter(c -> !c.isInRegion() && region.contains(c))
-                                                                .collect(Collectors.toList());
-      
-      for (Cell n : neighbors) {
-        n.setRegion(currentCell.getRegion());
-      }
-      
-      set.addAll(neighbors);
-      unsplitCellsCount = region.stream().filter(c -> !c.isInRegion()).count();
-    }
-    
-    if(Constants.DEBUGLEVEL >  1) System.out.println("Split concluido.");
-    if(Constants.DEBUGLEVEL >= 1) { print(); pause(); }
-    if(Constants.DEBUGLEVEL >  1) System.out.println("Vou construir a fronteira entre as regioes...");
-    
-    buildBorder(region);
+		return grid;
+	}
 
-    if(Constants.DEBUGLEVEL >  1) System.out.println("Fronteira construida e uma parede retirada.");
-    if(Constants.DEBUGLEVEL >= 1) { print(); pause(); }
-    
-    List<Cell> subRegionA = region.stream().filter(c -> c.getRegion() == Constants.A).collect(Collectors.toList()); 
-    List<Cell> subRegionB = region.stream().filter(c -> c.getRegion() == Constants.B).collect(Collectors.toList());
-    
-    if(Constants.DEBUGLEVEL  > 1) System.out.println("Invocando o split da regiao A.");
-    
-    split(subRegionA);
-    
-    if(Constants.DEBUGLEVEL  > 1) System.out.println("Invocando o split da regiao B.");
+	private void generateMaze() {
+		split(grid);
+		clearRegionMarks();
+	}
 
-    split(subRegionB);
-  }
+	public void print() {
+		System.out.println(this);
+	}
 
-  private void buildBorder(List<Cell> region) {
-    Set<Cell> border = new HashSet<Cell>(); 
+	private void clearRegionMarks() {
+		for (Cell cell : grid) {
+			cell.setRegion(Constants.NO_REGION);
+		}
+	}
 
-    //1. Choose one subregion (A or B) from the region passed as argument
-    List<Cell> subRegionA = region.stream()
-                                  .filter(c -> c.getRegion() == Constants.A)
-                                  .collect(Collectors.toList());
-    
-    //2. For each cell in this subregion, 
-    for (Cell c : subRegionA) {
-      // 2.1 For each of it's neighbors that also belongs to the region
-      // but is on a different subregion
-      List<Cell> neighborhood = c.getNeighborhood().stream()
-                                 .filter(n -> region.contains(n) && n.getRegion() == Constants.B)
-                                 .collect(Collectors.toList());
-      for (Cell n : neighborhood) {
-        // 2.2.1 put a wall between them
-        buildWall(c, n);
-        // 2.2.2 add the cell to a border collection
-        border.add(c);
-      }
-    }
-    
-    //3. Choose one random cell from the frontier collection
-    Cell cell = getRandomCell(Arrays.asList(border.toArray(new Cell[0])));
+	private void split(List<Cell> region) {
+		if (region.size() <= this.threshold)
+			return;
 
-    //4. Remove one of the cell's walls
-    cell.removeOneInternalWall();
-  }
-  
-  public Cell getCell(int x, int y) {
-    return grid.stream().filter(c -> c.x == x && c.y == y).findFirst().get();
-  }
+		clearRegionMarks();
 
-  private void buildWall(Cell cell, Cell neighbor) {  
-    int border = 0;
-    int borderNeighbor = 0;
-    
-    border += (neighbor.x == (cell.x + 1) ? Cell.EAST  : 0); 
-    border += (neighbor.x == (cell.x - 1) ? Cell.WEST  : 0); 
-    border += (neighbor.y == (cell.y + 1) ? Cell.SOUTH : 0); 
-    border += (neighbor.y == (cell.y - 1) ? Cell.NORTH : 0);
+		ArrayList<Cell> unsplit = new ArrayList(region);
 
-    borderNeighbor += (cell.x == (neighbor.x + 1) ? Cell.EAST  : 0); 
-    borderNeighbor += (cell.x == (neighbor.x - 1) ? Cell.WEST  : 0); 
-    borderNeighbor += (cell.y == (neighbor.y + 1) ? Cell.SOUTH : 0); 
-    borderNeighbor += (cell.y == (neighbor.y - 1) ? Cell.NORTH : 0);
-    
-    cell.setWalls(cell.getWalls() + border);
-    neighbor.setWalls(neighbor.getWalls() + borderNeighbor);
-  }
-  
-  
-  private Cell getRandomCell(List<Cell> cells) {
-    return cells.get(ThreadLocalRandom.current().nextInt(cells.size()));
-  }
+		if (Constants.DEBUGLEVEL > 1)
+			System.out.println("Iniciando Split");
+		if (Constants.DEBUGLEVEL >= 1) {
+			print();
+			pause();
+		}
 
-  
-  private Cell getRandomUnsplitCell(List<Cell> region) {
-    List<Cell> unsplitCells = region.stream().filter(c -> !c.isInRegion()).collect(Collectors.toList());
-    return getRandomCell(unsplitCells);
-  }
+		int indexSeedA = getRandomCellIndex(unsplit); 
+		Cell seedA = unsplit.get(indexSeedA);
+		seedA.setRegion(Constants.A);
+		unsplit.remove(indexSeedA);
+		
+		int indexSeedB = getRandomCellIndex(unsplit); 
+		Cell seedB = unsplit.get(indexSeedB);
+		seedB.setRegion(Constants.B);
+		unsplit.remove(indexSeedB);
+		
+		Set<Cell> set = new HashSet<Cell>();
+		set.add(seedA);
+		set.add(seedB);
 
-  public List<Integer> toList() {
-	  return grid.stream().map(Cell::getWallsAndCorners).collect(Collectors.toList());
-  }
-  
-  public String toString() {
-	StringBuffer sb = new StringBuffer("");
-    
-    for (int x = 0;  x < sizeX; x++) {
+		long unsplitCellsCount = unsplit.size();
+
+		while (unsplit.size() > 0) {
+			Cell currentCell = set.toArray(new Cell[0])[ThreadLocalRandom.current().nextInt(0, set.size())];
+			set.remove(currentCell);
+
+			Collection<Cell> neighbors = currentCell.getNeighborhood().stream()
+					.filter(c -> !c.isInRegion() && region.contains(c)).collect(Collectors.toList());
+
+			for (Cell n : neighbors) {
+				n.setRegion(currentCell.getRegion());
+				unsplit.remove(n);
+			}
+
+			set.addAll(neighbors);
+			//unsplitCellsCount = region.stream().filter(c -> !c.isInRegion()).count();
+		}
+
+		if (Constants.DEBUGLEVEL > 1)
+			System.out.println("Split concluido.");
+		if (Constants.DEBUGLEVEL >= 1) {
+			print();
+			pause();
+		}
+		if (Constants.DEBUGLEVEL > 1)
+			System.out.println("Vou construir a fronteira entre as regioes...");
+
+		buildBorder(region);
+
+		if (Constants.DEBUGLEVEL > 1)
+			System.out.println("Fronteira construida e uma parede retirada.");
+		if (Constants.DEBUGLEVEL >= 1) {
+			print();
+			pause();
+		}
+
+		List<Cell> subRegionA = region.stream().filter(c -> c.getRegion() == Constants.A).collect(Collectors.toList());
+		List<Cell> subRegionB = region.stream().filter(c -> c.getRegion() == Constants.B).collect(Collectors.toList());
+
+		if (Constants.DEBUGLEVEL > 1)
+			System.out.println("Invocando o split da regiao A.");
+
+		split(subRegionA);
+
+		if (Constants.DEBUGLEVEL > 1)
+			System.out.println("Invocando o split da regiao B.");
+
+		split(subRegionB);
+	}
+
+	private void buildBorder(List<Cell> region) {
+		Set<Cell> border = new HashSet<Cell>();
+
+		// 1. Choose one subregion (A or B) from the region passed as argument
+		List<Cell> subRegionA = region.stream().filter(c -> c.getRegion() == Constants.A).collect(Collectors.toList());
+
+		// 2. For each cell in this subregion,
+		for (Cell c : subRegionA) {
+			// 2.1 For each of it's neighbors that also belongs to the region
+			// but is on a different subregion
+			List<Cell> neighborhood = c.getNeighborhood().stream()
+					.filter(n -> region.contains(n) && n.getRegion() == Constants.B).collect(Collectors.toList());
+			for (Cell n : neighborhood) {
+				// 2.2.1 put a wall between them
+				buildWall(c, n);
+				// 2.2.2 add the cell to a border collection
+				border.add(c);
+			}
+		}
+
+		// 3. Choose one random cell from the frontier collection
+		Cell cell = getRandomCell(Arrays.asList(border.toArray(new Cell[0])));
+
+		// 4. Remove one of the cell's walls
+		cell.removeOneInternalWall();
+	}
+
+	public Cell getCell(int x, int y) {
+		return grid.stream().filter(c -> c.x == x && c.y == y).findFirst().get();
+	}
+
+	private void buildWall(Cell cell, Cell neighbor) {
+		int border = 0;
+		int borderNeighbor = 0;
+
+		border += (neighbor.x == (cell.x + 1) ? Cell.EAST : 0);
+		border += (neighbor.x == (cell.x - 1) ? Cell.WEST : 0);
+		border += (neighbor.y == (cell.y + 1) ? Cell.SOUTH : 0);
+		border += (neighbor.y == (cell.y - 1) ? Cell.NORTH : 0);
+
+		borderNeighbor += (cell.x == (neighbor.x + 1) ? Cell.EAST : 0);
+		borderNeighbor += (cell.x == (neighbor.x - 1) ? Cell.WEST : 0);
+		borderNeighbor += (cell.y == (neighbor.y + 1) ? Cell.SOUTH : 0);
+		borderNeighbor += (cell.y == (neighbor.y - 1) ? Cell.NORTH : 0);
+
+		cell.setWalls(cell.getWalls() + border);
+		neighbor.setWalls(neighbor.getWalls() + borderNeighbor);
+	}
+
+	private Cell getRandomCell(List<Cell> cells) {
+		return cells.get(ThreadLocalRandom.current().nextInt(cells.size()));
+	}
+
+	private int getRandomCellIndex(List<Cell> cells) {
+		return ThreadLocalRandom.current().nextInt(cells.size());
+	}
+
+	private Cell getRandomUnsplitCell(List<Cell> region) {
+		List<Cell> unsplitCells = region.stream().filter(c -> !c.isInRegion()).collect(Collectors.toList());
+		return getRandomCell(unsplitCells);
+	}
+
+	public List<Integer> toList() {
+		return grid.stream().map(Cell::getWallsAndCorners).collect(Collectors.toList());
+	}
+
+	public String toString() {
+		StringBuffer sb = new StringBuffer("");
+
+		for (int x = 0; x < sizeX; x++) {
 //      sb.append("+---");
-      sb.append("----");
-    }
+			sb.append("----");
+		}
 //    sb.append("+\n");
-    sb.append(" \n");
+		sb.append(" \n");
 
-    for (int y = 0; y < sizeY; y++) {
-    	sb.append("|");
+		for (int y = 0; y < sizeY; y++) {
+			sb.append("|");
 //      String bottom = "+";
-      StringBuffer bottom = new StringBuffer(" ");
+			StringBuffer bottom = new StringBuffer(" ");
 
-      for (int x = 0;  x < sizeX; x++) {
-        Cell cell = this.getCell(x, y);
+			for (int x = 0; x < sizeX; x++) {
+				Cell cell = this.getCell(x, y);
 
-        sb.append(" ")
-          .append(cell.getRegionPic())
-          .append(" ")
-          .append(cell.hasEastWall() ? "|" : " ");
+				sb.append(" ").append(cell.getRegionPic()).append(" ").append(cell.hasEastWall() ? "|" : " ");
 
-        bottom.append(cell.hasSouthWall() ? "---" : "   ");
+				bottom.append(cell.hasSouthWall() ? "---" : "   ");
 //        bottom.append("+");
-        bottom.append(" ");
-      }
+				bottom.append(" ");
+			}
 
-      sb.append("\n")
-        .append(bottom)
-        .append("\n");
-    }
+			sb.append("\n").append(bottom).append("\n");
+		}
 
-    return sb.toString();
-  }
-  
-  private void pause() {
+		return sb.toString();
+	}
+
+	private void pause() {
 //    try {
 //      System.in.read(new byte[2]);
 //    } catch (IOException e) {
 //    }
-  }
+	}
 
-  public static void main(String[] args) {
-    long start = System.currentTimeMillis();
-    Maze maze = new Maze(6,6);
-    long finish = System.currentTimeMillis();
-    long duration = finish - start;
+	public static void main(String[] args) {
+		for(int i = 0; i < 3; i++) {
+			long start = System.currentTimeMillis();
+			Maze maze = new Maze(100, 100);
+			long finish = System.currentTimeMillis();
+			long duration = finish - start;
+			System.out.printf("Round: " + i + " - Creation time: %d\n", duration);
+		}
 
-    System.out.printf("Creation time: %d\n", duration);
-
-//    maze.print();
-
-    start = System.currentTimeMillis();
-//    TiledExporter.toJSON(maze);
-    maze.print();
-    
-    System.out.println(maze.toList());
-    
-    finish = System.currentTimeMillis();
-    duration = finish - start;
-
-    System.out.printf("Export time: %d\n", duration);
-  }
+//		start = System.currentTimeMillis();
+//
+//	    TiledExporter.toJSON(maze);
+//		maze.print();
+//		System.out.println(maze.toList());
+//
+//		finish = System.currentTimeMillis();
+//		duration = finish - start;
+//
+//		System.out.printf("Export time: %d\n", duration);
+	}
 }
