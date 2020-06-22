@@ -275,8 +275,8 @@ public class Maze {
 			Maze maze = new Maze(100, 100);
 			maze.toList();
 			long finish = System.currentTimeMillis();
-			float duration = finish - start;
-			System.out.printf("Round: " + i + " - Creation time: %d\n", duration / 1000);
+			long duration = finish - start;
+			System.out.printf("Round: %d - Creation time: %5.2fs\n", i, duration / 1000f);
 		}
 
 //		start = System.currentTimeMillis();
