@@ -85,7 +85,9 @@ public class Maze {
 
 		clearRegionMarks();
 
-		ArrayList<Cell> unsplit = new ArrayList(region);
+		ArrayList<Cell> unsplit = new ArrayList<Cell>(region);
+		ArrayList<Cell> subRegionA = new ArrayList<Cell>();
+		ArrayList<Cell> subRegionB = new ArrayList<Cell>();
 
 		if (Constants.DEBUGLEVEL > 1)
 			System.out.println("Iniciando Split");
@@ -97,18 +99,18 @@ public class Maze {
 		int indexSeedA = getRandomCellIndex(unsplit); 
 		Cell seedA = unsplit.get(indexSeedA);
 		seedA.setRegion(Constants.A);
+		subRegionA.add(seedA);
 		unsplit.remove(indexSeedA);
 		
 		int indexSeedB = getRandomCellIndex(unsplit); 
 		Cell seedB = unsplit.get(indexSeedB);
 		seedB.setRegion(Constants.B);
+		subRegionB.add(seedB);
 		unsplit.remove(indexSeedB);
 		
 		Set<Cell> set = new HashSet<Cell>();
 		set.add(seedA);
 		set.add(seedB);
-
-		long unsplitCellsCount = unsplit.size();
 
 		while (unsplit.size() > 0) {
 			Cell currentCell = set.toArray(new Cell[0])[ThreadLocalRandom.current().nextInt(0, set.size())];
@@ -120,6 +122,11 @@ public class Maze {
 			for (Cell n : neighbors) {
 				n.setRegion(currentCell.getRegion());
 				unsplit.remove(n);
+				if (currentCell.getRegion() == Constants.A) {
+					subRegionA.add(n);
+				} else {
+					subRegionB.add(n);
+				}
 			}
 
 			set.addAll(neighbors);
@@ -144,8 +151,8 @@ public class Maze {
 			pause();
 		}
 
-		List<Cell> subRegionA = region.stream().filter(c -> c.getRegion() == Constants.A).collect(Collectors.toList());
-		List<Cell> subRegionB = region.stream().filter(c -> c.getRegion() == Constants.B).collect(Collectors.toList());
+//		List<Cell> subRegionA = region.stream().filter(c -> c.getRegion() == Constants.A).collect(Collectors.toList());
+//		List<Cell> subRegionB = region.stream().filter(c -> c.getRegion() == Constants.B).collect(Collectors.toList());
 
 		if (Constants.DEBUGLEVEL > 1)
 			System.out.println("Invocando o split da regiao A.");
@@ -266,9 +273,10 @@ public class Maze {
 		for(int i = 0; i < 3; i++) {
 			long start = System.currentTimeMillis();
 			Maze maze = new Maze(100, 100);
+			maze.toList();
 			long finish = System.currentTimeMillis();
-			long duration = finish - start;
-			System.out.printf("Round: " + i + " - Creation time: %d\n", duration);
+			float duration = finish - start;
+			System.out.printf("Round: " + i + " - Creation time: %d\n", duration / 1000);
 		}
 
 //		start = System.currentTimeMillis();
