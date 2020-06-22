@@ -270,13 +270,22 @@ public class Maze {
 	}
 
 	public static void main(String[] args) {
-		for(int i = 0; i < 3; i++) {
+		long  sum = 0;
+		long  min = Long.MAX_VALUE;
+		long  max = Long.MIN_VALUE;
+		float avg = 0f;
+		
+		for(int i = 0; i < 10; i++) {
 			long start = System.currentTimeMillis();
 			Maze maze = new Maze(100, 100);
 			maze.toList();
 			long finish = System.currentTimeMillis();
 			long duration = finish - start;
-			System.out.printf("Round: %d - Creation time: %5.2fs\n", i, duration / 1000f);
+			sum += duration;
+			min = (duration < min) ? duration : min;
+			max = (duration > max) ? duration : max;
+			avg = sum / (i+1);
+			System.out.printf("Round: %d - Time: %5.2fs - Min: %5.2fs - Max: %5.2fs - Avg: %5.2fs\n", i, duration / 1000f, min / 1000f, max / 1000f, avg / 1000f);
 		}
 
 //		start = System.currentTimeMillis();
