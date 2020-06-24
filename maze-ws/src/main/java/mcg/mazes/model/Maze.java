@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -23,7 +22,14 @@ public class Maze {
 	private ArrayList<Cell> grid;
 
 	static int printNum = 0;
+	
+	long totalClearRegionMarksDuration = 0;
+	long totalSplitDuration = 0;
+	long totalGetCellDuration = 0;
+	long totalBuildBorderDuration = 0;
 
+	int countGetCell = 0;
+	
 	public Maze() throws IOException {
 		this(4, 4);
 	}
@@ -65,7 +71,10 @@ public class Maze {
 	}
 
 	private void generateMaze() {
+		long start = System.currentTimeMillis();
 		split(grid);
+		long finish = System.currentTimeMillis();	
+		totalSplitDuration += finish - start; 
 		clearRegionMarks();
 	}
 
@@ -74,9 +83,14 @@ public class Maze {
 	}
 
 	private void clearRegionMarks() {
+		long start = System.currentTimeMillis();
+		
 		for (Cell cell : grid) {
 			cell.setRegion(Constants.NO_REGION);
 		}
+		
+		long finish = System.currentTimeMillis();	
+		totalClearRegionMarksDuration += finish - start; 
 	}
 
 	private void split(List<Cell> region) {
@@ -96,18 +110,18 @@ public class Maze {
 			pause();
 		}
 
-		int indexSeedA = getRandomCellIndex(unsplit); 
+		int indexSeedA = getRandomCellIndex(unsplit);
 		Cell seedA = unsplit.get(indexSeedA);
 		seedA.setRegion(Constants.A);
 		subRegionA.add(seedA);
 		unsplit.remove(indexSeedA);
-		
-		int indexSeedB = getRandomCellIndex(unsplit); 
+
+		int indexSeedB = getRandomCellIndex(unsplit);
 		Cell seedB = unsplit.get(indexSeedB);
 		seedB.setRegion(Constants.B);
 		subRegionB.add(seedB);
 		unsplit.remove(indexSeedB);
-		
+
 		Set<Cell> set = new HashSet<Cell>();
 		set.add(seedA);
 		set.add(seedB);
@@ -142,7 +156,7 @@ public class Maze {
 		if (Constants.DEBUGLEVEL > 1)
 			System.out.println("Vou construir a fronteira entre as regioes...");
 
-		buildBorder(region);
+		buildBorder(region, subRegionA, subRegionB);
 
 		if (Constants.DEBUGLEVEL > 1)
 			System.out.println("Fronteira construida e uma parede retirada.");
@@ -165,6 +179,36 @@ public class Maze {
 		split(subRegionB);
 	}
 
+	private void buildBorder(List<Cell> region, List<Cell> subRegionA, List<Cell> subRegionB) {
+		long start = System.currentTimeMillis();
+
+		Set<Cell> border = new HashSet<Cell>();
+
+		// 1. Choose one subregion (A or B) from the region passed as argument
+		// 2. For each cell in this subregion,
+		for (Cell c : subRegionA) {
+			// 2.1 For each of it's neighbors that also belongs to the region
+			// but is on a different subregion
+			List<Cell> neighborhood = c.getNeighborhood().stream()
+					.filter(n -> region.contains(n) && n.getRegion() == Constants.B).collect(Collectors.toList());
+			for (Cell n : neighborhood) {
+				// 2.2.1 put a wall between them
+				buildWall(c, n);
+				// 2.2.2 add the cell to a border collection
+				border.add(c);
+			}
+		}
+
+		// 3. Choose one random cell from the frontier collection
+		Cell cell = getRandomCell(border.toArray(new Cell[0]));
+
+		// 4. Remove one of the cell's walls
+		cell.removeOneInternalWall();
+		long finish = System.currentTimeMillis();	
+		totalBuildBorderDuration += finish - start; 
+	}
+	
+	
 	private void buildBorder(List<Cell> region) {
 		Set<Cell> border = new HashSet<Cell>();
 
@@ -193,7 +237,13 @@ public class Maze {
 	}
 
 	public Cell getCell(int x, int y) {
-		return grid.stream().filter(c -> c.x == x && c.y == y).findFirst().get();
+		countGetCell++;
+		long start = System.currentTimeMillis();
+		Cell cell = grid.get((y * this.sizeX)+x);
+//		Cell cell = grid.stream().filter(c -> c.x == x && c.y == y).findFirst().get();
+		long finish = System.currentTimeMillis();
+		totalGetCellDuration += finish - start;
+		return cell;
 	}
 
 	private void buildWall(Cell cell, Cell neighbor) {
@@ -216,6 +266,10 @@ public class Maze {
 
 	private Cell getRandomCell(List<Cell> cells) {
 		return cells.get(ThreadLocalRandom.current().nextInt(cells.size()));
+	}
+
+	private Cell getRandomCell(Cell[] cells) {
+		return cells[ThreadLocalRandom.current().nextInt(cells.length)];
 	}
 
 	private int getRandomCellIndex(List<Cell> cells) {
@@ -249,7 +303,7 @@ public class Maze {
 			for (int x = 0; x < sizeX; x++) {
 				Cell cell = this.getCell(x, y);
 
-				sb.append(" ").append(cell.getRegionPic()).append(" ").append(cell.hasEastWall() ? "|" : " ");
+				sb.append(" ").append(cell.hasEastWall() ? "|" : " ");
 
 				bottom.append(cell.hasSouthWall() ? "---" : "   ");
 //        bottom.append("+");
@@ -284,19 +338,8 @@ public class Maze {
 			sum += duration;
 			min = (duration < min) ? duration : min;
 			max = (duration > max) ? duration : max;
-			avg = sum / (i+1);
-			System.out.printf("Round: %d - Time: %5.2fs - Min: %5.2fs - Max: %5.2fs - Avg: %5.2fs\n", i, duration / 1000f, min / 1000f, max / 1000f, avg / 1000f);
+			avg = sum / (i+1);			
+			System.out.printf("Round: %d - Time: %5.2fs - Min: %5.2fs - Max: %5.2fs - Avg: %5.2fs - Clearing: %d - Splitting: %d - Building Border: %d - getCell(): %d - Count getCell(): %d%n", i, duration / 1000f, min / 1000f, max / 1000f, avg / 1000f, maze.totalClearRegionMarksDuration, maze.totalSplitDuration, maze.totalBuildBorderDuration, maze.totalGetCellDuration, maze.countGetCell);
 		}
-
-//		start = System.currentTimeMillis();
-//
-//	    TiledExporter.toJSON(maze);
-//		maze.print();
-//		System.out.println(maze.toList());
-//
-//		finish = System.currentTimeMillis();
-//		duration = finish - start;
-//
-//		System.out.printf("Export time: %d\n", duration);
 	}
 }

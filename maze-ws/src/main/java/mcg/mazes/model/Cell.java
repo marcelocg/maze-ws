@@ -7,9 +7,6 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
-import mcg.mazes.utils.Constants;
-import mcg.mazes.utils.Util;
-
 public class Cell {
 	int x;
 	int y;
@@ -49,18 +46,11 @@ public class Cell {
 		this.y = y;
 		this.maze = maze;
 
-		int walls = 0;
+		this.wallWest = (x == 0);
+		this.wallNorth = (y == 0);
+		this.wallEast = (x == maze.sizeX - 1);
+		this.wallSouth = (y == maze.sizeY - 1);
 
-		if (x == 0)
-			walls += WEST;
-		if (y == 0)
-			walls += NORTH;
-		if (x == maze.sizeX - 1)
-			walls += EAST;
-		if (y == maze.sizeY - 1)
-			walls += SOUTH;
-
-		setWalls(walls);
 	}
 
 	public boolean hasNorthWall() {
@@ -80,29 +70,7 @@ public class Cell {
 	}
 
 	public String toString() {
-		return "(" + x + "," + y + ") Region: " + getRegionName() + " Borders: " + this.whichWalls();
-	}
-
-	public String getRegionName() {
-		String[] regNames = { " ", "A", "B" };
-		return regNames[region + 1];
-	}
-
-	public String getRegionPic() {
-		String[] pics = null;
-		if (Constants.USE_COLORS == 1) {
-			String RESET = (char) 27 + "[0m";
-			String RED = (char) 27 + "[31m";
-			String BLUE = (char) 27 + "[34m";
-
-			String[] colored_pics = { RESET + Util.getAscii(32), RED + Util.getAscii(176) + RESET,
-					BLUE + Util.getAscii(177) + RESET };
-			pics = colored_pics;
-		} else {
-			String[] uncolored_pics = { " ", " ", " " };
-			pics = uncolored_pics;
-		}
-		return pics[region + 1];
+		return "(" + x + "," + y + ") Borders: " + this.whichWalls();
 	}
 
 	public boolean isInRegion() {

@@ -7,9 +7,9 @@
 		<artifactId>maze-bom</artifactId>
 		<version>0.0.1-SNAPSHOT</version>
 	</parent>
-	
+
 	<artifactId>maze-ws</artifactId>
 	<name>maze-ws</name>
-	<description>Produral generated mazes</description>
+	<description>Procedural generated mazes</description>
 
 </project>
