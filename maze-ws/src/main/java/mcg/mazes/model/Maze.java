@@ -2,7 +2,6 @@ package mcg.mazes.model;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -207,40 +206,11 @@ public class Maze {
 		long finish = System.currentTimeMillis();	
 		totalBuildBorderDuration += finish - start; 
 	}
-	
-	
-	private void buildBorder(List<Cell> region) {
-		Set<Cell> border = new HashSet<Cell>();
-
-		// 1. Choose one subregion (A or B) from the region passed as argument
-		List<Cell> subRegionA = region.stream().filter(c -> c.getRegion() == Constants.A).collect(Collectors.toList());
-
-		// 2. For each cell in this subregion,
-		for (Cell c : subRegionA) {
-			// 2.1 For each of it's neighbors that also belongs to the region
-			// but is on a different subregion
-			List<Cell> neighborhood = c.getNeighborhood().stream()
-					.filter(n -> region.contains(n) && n.getRegion() == Constants.B).collect(Collectors.toList());
-			for (Cell n : neighborhood) {
-				// 2.2.1 put a wall between them
-				buildWall(c, n);
-				// 2.2.2 add the cell to a border collection
-				border.add(c);
-			}
-		}
-
-		// 3. Choose one random cell from the frontier collection
-		Cell cell = getRandomCell(Arrays.asList(border.toArray(new Cell[0])));
-
-		// 4. Remove one of the cell's walls
-		cell.removeOneInternalWall();
-	}
 
 	public Cell getCell(int x, int y) {
 		countGetCell++;
 		long start = System.currentTimeMillis();
 		Cell cell = grid.get((y * this.sizeX)+x);
-//		Cell cell = grid.stream().filter(c -> c.x == x && c.y == y).findFirst().get();
 		long finish = System.currentTimeMillis();
 		totalGetCellDuration += finish - start;
 		return cell;
@@ -264,21 +234,12 @@ public class Maze {
 		neighbor.setWalls(neighbor.getWalls() + borderNeighbor);
 	}
 
-	private Cell getRandomCell(List<Cell> cells) {
-		return cells.get(ThreadLocalRandom.current().nextInt(cells.size()));
-	}
-
 	private Cell getRandomCell(Cell[] cells) {
 		return cells[ThreadLocalRandom.current().nextInt(cells.length)];
 	}
 
 	private int getRandomCellIndex(List<Cell> cells) {
 		return ThreadLocalRandom.current().nextInt(cells.size());
-	}
-
-	private Cell getRandomUnsplitCell(List<Cell> region) {
-		List<Cell> unsplitCells = region.stream().filter(c -> !c.isInRegion()).collect(Collectors.toList());
-		return getRandomCell(unsplitCells);
 	}
 
 	public List<Integer> toList() {
